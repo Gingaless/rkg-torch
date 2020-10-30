@@ -196,7 +196,7 @@ class EarlyStyleConvBlock(nn.Module):
 
     def forward(self, latent_w, noise):
 
-        result = self.constant.repeat(noise.size(0), 1, 1, 1)
+        result = self.constant.repeat(noise.size(0), 1, 1, 1).to(next(self.parameters()).device)
         result = result + self.noise1(noise)
         result = self.adain(result, self.style1(latent_w))
         result = self.lrelu(result)
@@ -210,7 +210,7 @@ class EarlyStyleConvBlock(nn.Module):
 
 class UpSamplingBlock(nn.Module):
     def __init__(self):
-        super(UpSamplingBlock, self).__init__()
+        super().__init__()
 
     def forward(self, x):
         return nn.functional.interpolate(x, scale_factor=2)

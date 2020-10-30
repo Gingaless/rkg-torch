@@ -8,7 +8,8 @@ from c_utils import load_model
 from c_dset import create_image_loader_from_path, show_images_from_tensors, save_images_from_tensors
 
 
-device = c_utils.set_device("gpu" if torch.cuda.is_available() else "cpu")
+device_type = "gpu" if torch.cuda.is_available() else "cpu"
+device = c_utils.set_device(device_type)
 
 dataroot = "/home/shy/kiana_resized"
 
@@ -103,6 +104,7 @@ def init_models():
     if netG==None:
         netG = PGSB_Generator(n_fc, nz, start_image_size, transition_channels, insert_sa_layers, nc).to(device)
         [netG.extend() for _ in range(start_step)]
+    set_device(device_type)
 
 
 def set_transition_value(value):
@@ -115,6 +117,17 @@ def extend():
     netG.extend()
     netD.extend()
     current_step += 1
+
+def set_device(_device_type):
+  global device_type, netG, netD
+  device_type = _device_type
+  device = c_utils.set_device(device_type)
+  if _device_type=='gpu':
+    if netG!=None:
+      netG = netG.cuda()
+    if netD!=None:
+      netD = netD.cuda()
+
 
 def update_transition_value():
     netG.increase_transition_value(transition_rate)
@@ -129,6 +142,7 @@ def load_checkpoint(path=save_checkpoint_path):
     global beta1, beta2, criterion, lr_d, lr_g, current_step
     netG = load_model(PGSB_Generator, s_dict['generator']).to(device)
     netD = load_model(PGSB_Discriminator, s_dict['discriminator']).to(device)
+    set_device(device_type)
     total_epochs, total_iters = s_dict['total_epochs'], s_dict['total_iters']
     total_G_losses, total_D_losses = s_dict['total_G_losses'], s_dict['total_D_losses']
     n_critic, beta1, beta2 = s_dict['n_critic'], s_dict['beta1'], s_dict['beta2']
