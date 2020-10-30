@@ -1,0 +1,11 @@
+gcc -o simple img_select_box.cc test1.cc `pkg-config gtkmm-3.0 opencv4 --cflags --libs` -lstdc++
+
+gcc -o simple img_select_box.cc test2.cc `pkg-config gtkmm-3.0 --cflags --libs` -lstdc++
+
+gcc sqlite_ex.cc `pkg-config sqlite3 --cflags --libs` -lstdc++ -ljsoncpp -std=gnu++17
+
+#-std=gnu++17은 iterator 라이브러리의 std::size를 사용하기 위함이다. 
+
+gcc s3.cc sql_selres.cc `pkg-config sqlite3 --cflags --libs` -lstdc++ -ljsoncpp -std=gnu++17
+
+gcc -o rkg img_select_box.cc sql_selres.cc rkg_select_img.cc rkg_main.cc `pkg-config gtkmm-3.0 sqlite3 --cflags --libs` -lstdc++ -ljsoncpp -lboost_filesystem -lboost_system -ldl -std=gnu++17

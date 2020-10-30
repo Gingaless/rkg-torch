@@ -1,0 +1,8 @@
+{
+    "dbPATH" : "selres_log.db",
+    "tableNAME" : "kiana_resized",
+    "srcPATH" : "/home/shy/kiana_cropped/1",
+    "destPATH" : "/home/shy/kiana_resized",
+    "resizeH" : [512],
+    "resizeW" : [512]
+}
