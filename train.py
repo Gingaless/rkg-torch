@@ -180,6 +180,7 @@ def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
         load_checkpoint()
 
     dataloader = create_image_loader_from_path(dataroot, netD.current_img_size, batch_size)
+    show_images_from_tensors(next(iter(dataloader)))
     
     for epoch in range(num_epochs):
         for i, data in enumerate(dataloader, 0):
