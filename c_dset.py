@@ -57,15 +57,10 @@ def show_images_from_tensors(image_tensors, grid_size=(8,8), min_size=0, max_siz
 
 def save_images_from_tensors(image_tensors, path, grid_size=(8,8), min_size=0, max_size=0, title="images", padding=2):
 
-    print(1)
     plt_images_from_tensors(image_tensors, grid_size, min_size, max_size, title, padding)
-    print(2)
     plt.savefig(path, dpi=dpi)
-    print(3)
     plt.clf()
-    print(4)
     plt.close()
-    print(5)
 
 
 if __name__=='__main__':
