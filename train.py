@@ -1,5 +1,6 @@
 
 import torch
+import numpy as np
 from torch import nn, optim
 from generator import PGSB_Generator
 from discriminator import PGSB_Discriminator
@@ -50,7 +51,7 @@ current_step = start_step
 
 n_critic = 2
 
-step_mix_style = 3 # the minimum step where to apply stlye mixing.
+step_mix_style = 2 # the minimum step where to apply stlye mixing.
 
 n_show_loss = 1 # loss will be recorded every n_show_loss iterations.
 
@@ -71,8 +72,8 @@ eval_clip = (-1.5, 1.5)
 
 transition_rate = 1.0 / 200
 
-min_fake_size = 32
-max_fake_size = 128
+min_fake_size = 64
+max_fake_size = 256
 
 save_checkpoint_period = 1
 
@@ -154,13 +155,17 @@ def load_checkpoint(path=save_checkpoint_path):
     optim_G.load_state_dict(s_dict['optimizerG'])
 
 
-def generate_latent_noise(b_size=batch_size, clip_value=None):
-    out1 = torch.randn(b_size, nz, device=device)
+def generate_latent_noise(b_size=batch_size, clip_value=None, supress_mix_style=False):
+    out1 = [torch.randn(b_size, nz, device=device)] if current_step < step_mix_style else [torch.randn(b_size, nz, device=device) for _ in range(2)]
     out2 = torch.randn(b_size, 1, device=device)
+    style_mix_step = list(range(np.random.randint(0,current_step+1), 
+    current_step+1)) if current_step >= step_mix_style else []
     if isinstance(clip_value, tuple):
-        return torch.clamp(out1, *clip_value), torch.clamp(out2, *clip_value)
-    else:
-        return out1, out2
+        out1 = [torch.clamp(_out1, *clip_value) for _out1 in out1]
+        out2 = torch.clamp(out2, *clip_value)
+    if (supress_mix_style):
+        style_mix_step = []
+    return out1, out2, style_mix_step
 
 
 def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
@@ -180,7 +185,7 @@ def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
         load_checkpoint()
 
     dataloader = create_image_loader_from_path(dataroot, netD.current_img_size, batch_size)
-    show_images_from_tensors(next(iter(dataloader)))
+    show_images_from_tensors(next(iter(dataloader))[0])
     
     for epoch in range(num_epochs):
         for i, data in enumerate(dataloader, 0):
@@ -233,7 +238,8 @@ def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
 
         if ((epoch+1) % eval_G == 0) or (epoch == num_epochs - 1):
             with torch.no_grad():
-                fake = netG(*generate_latent_noise(n_images_eval, clip_value=eval_clip)).detach().cpu()
+                fake = netG(*generate_latent_noise(n_images_eval, 
+                clip_value=eval_clip, supress_mix_style=True)).detach().cpu()
                 show_images_from_tensors(fake, min_size=min_fake_size, max_size=max_fake_size)
                 if save_fake_prefix != None:
                     save_images_from_tensors(fake, save_fake_prefix + str(epoch) + ".jpg", 

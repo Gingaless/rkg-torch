@@ -66,7 +66,7 @@ class PGSB_Generator(ProgressiveBaseModel):
             return self.to_rgb_old(y)
         else:
             y_old = self.to_rgb_old(y)
-            y_new = self.upres_attn(self.new_blocks, y, latent_w[1] if self.transition_step in style_mix_steps else latent_w[0], noise)
+            y_new = self.upres_attn(self.new_blocks, y, latent_w[1] if (self.transition_step-1) in style_mix_steps else latent_w[0], noise)
             y_new = self.to_rgb_new(y_new)
             return self.transition_value*y_new + (1 - self.transition_value)*y_old
 
