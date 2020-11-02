@@ -6,7 +6,7 @@ from generator import PGSB_Generator
 from discriminator import PGSB_Discriminator
 import c_utils
 from c_utils import load_model
-from c_dset import create_image_loader_from_path, show_images_from_tensors, save_images_from_tensors
+from c_dset import create_image_loader_from_path, show_images_from_tensors, save_images_from_tensors, set_plt_backend
 
 
 device_type = "gpu" if torch.cuda.is_available() else "cpu"
@@ -77,6 +77,9 @@ max_fake_size = 256
 
 save_checkpoint_period = 1
 
+
+def set_eval_backend(backend):
+    set_plt_backend(backend)
 
 
 def save_checkpoint():
@@ -167,8 +170,17 @@ def generate_latent_noise(b_size=batch_size, clip_value=None, supress_mix_style=
         style_mix_step = []
     return out1, out2, style_mix_step
 
+def evaluate_G(save_path=None):
+     with torch.no_grad():
+         fake = netG(*generate_latent_noise(n_images_eval, 
+         clip_value=eval_clip, supress_mix_style=True)).detach().cpu()
+         show_images_from_tensors(fake, min_size=min_fake_size, max_size=max_fake_size)
+         if save_path != None:
+             save_images_from_tensors(fake, save_path, min_size=min_fake_size, max_size=max_fake_size)
 
-def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
+    
+
+def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-', eval_dl=True):
 
     global total_G_losses, total_D_losses
     global total_epochs, total_iters
@@ -185,7 +197,10 @@ def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
         load_checkpoint()
 
     dataloader = create_image_loader_from_path(dataroot, netD.current_img_size, batch_size)
-    show_images_from_tensors(next(iter(dataloader))[0])
+
+    #eval_dl : evaluate_dataloader
+    if eval_dl:
+        show_images_from_tensors(next(iter(dataloader))[0], min_size=min_fake_size, max_size=max_fake_size)
     
     for epoch in range(num_epochs):
         for i, data in enumerate(dataloader, 0):
@@ -237,14 +252,7 @@ def train_loop(load_path=None, eval_G=1, save_fake_prefix='rkg-'):
         total_epochs[current_step] += 1
 
         if ((epoch+1) % eval_G == 0) or (epoch == num_epochs - 1):
-            with torch.no_grad():
-                fake = netG(*generate_latent_noise(n_images_eval, 
-                clip_value=eval_clip, supress_mix_style=True)).detach().cpu()
-                show_images_from_tensors(fake, min_size=min_fake_size, max_size=max_fake_size)
-                if save_fake_prefix != None:
-                    save_images_from_tensors(fake, save_fake_prefix + str(epoch) + ".jpg", 
-                    min_size=min_fake_size, max_size=max_fake_size)
-
+            evaluate_G(save_fake_prefix + str(epoch) + ".jpg")
         if save_checkpoint_period > 0 :
             if (epoch % save_checkpoint_period == 0) or (epoch == num_epochs-1):
                 save_checkpoint()

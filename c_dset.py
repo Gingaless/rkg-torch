@@ -4,8 +4,15 @@ import torchvision.transforms as transforms
 import torchvision.utils as vutils
 import torch.nn.functional as F
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from functools import reduce
+
+dpi = 100.0 #dot per inch
+
+
+def set_plt_backend(backend):
+    mpl.use(backend)
 
 
 def load_images_from_path(root_path, image_size):
@@ -33,28 +40,32 @@ def plt_images_from_tensors(image_tensors, grid_size=(8,8), min_size=0, max_size
         size = max(size, min_size)
     if size!=image_tensors.size(-1):
         image_tensors = F.interpolate(image_tensors, size=size)
-    
-    
-    np_image_set = np.transpose(vutils.make_grid(image_tensors[:(reduce(lambda a,b:a*b, grid_size))], 
-    padding=padding, nrow=grid_size[1],normalize=True).cpu(), (1,2,0))
-    dpi = 100.0#dot per inch
-    plt.figure(figsize=tuple(np.array(np_image_set.size()[:2])*size/dpi))
+
+    plt.figure(figsize=grid_size, dpi=size)
     plt.axis("off")
     plt.title(title)
-    plt.imshow(np_image_set)
+    plt.imshow(np.transpose(vutils.make_grid(image_tensors[:(reduce(lambda a,b:a*b, grid_size))], 
+    padding=padding, nrow=grid_size[1],normalize=True).cpu(), (1,2,0)))
 
 
 def show_images_from_tensors(image_tensors, grid_size=(8,8), min_size=0, max_size=0, title="images", padding=2):
 
     plt_images_from_tensors(image_tensors, grid_size, min_size, max_size, title, padding)
     plt.show()
+    plt.clf()
+    plt.close('all')
 
 def save_images_from_tensors(image_tensors, path, grid_size=(8,8), min_size=0, max_size=0, title="images", padding=2):
 
+    print(1)
     plt_images_from_tensors(image_tensors, grid_size, min_size, max_size, title, padding)
-    plt.savefig(path)
+    print(2)
+    plt.savefig(path, dpi=dpi)
+    print(3)
     plt.clf()
+    print(4)
     plt.close()
+    print(5)
 
 
 if __name__=='__main__':
@@ -63,4 +74,4 @@ if __name__=='__main__':
     if len(sys.argv) > 1:
         size=int(sys.argv[1])
     x=torch.ones(1,3,size,size)
-    show_images_from_tensors(x, (1,1), 32, 128)
+    show_images_from_tensors(x, (8,8), 32, 128)
