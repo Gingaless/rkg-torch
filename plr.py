@@ -15,10 +15,7 @@ class PathRegularization():
         
         pl_minibatch_size = minibatch_size // pl_minibatch_shrink
         latent_z = torch.randn(pl_minibatch_size, G.dim_latent, device=self.device,dtype=torch.float)
-        G.save_dlatents = True
-        fake_image_out = G(latent_z)
-        G.save_dlatents = False
-        dlatents = G.dlatents.clone()
+        fake_image_out, dlatents = G(latent_z,return_dlatents=True)
         scale = torch.full((1,),fake_image_out.size()[2:].numel(),device=self.device)
         pl_noise = torch.randn_like(fake_image_out,device=self.device) / torch.sqrt(scale)
         grad, = autograd.grad(outputs=torch.sum(fake_image_out*pl_noise),inputs=dlatents,create_graph=True)

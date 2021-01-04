@@ -17,8 +17,6 @@ class SG2_Generator(nn.Module):
         self.n_fc = n_fc
         self.insert_sa_layers = insert_sa_layers
         self.style_conv_blocks = nn.ModuleList()
-        self.save_dlatents = False
-        self.dlatents = None
         img_size_buf = image_size
         for i in reversed(range(1,len(img_channels))):
             img_size_buf = img_size_buf // 2
@@ -40,16 +38,12 @@ class SG2_Generator(nn.Module):
         return model
 
 
-    def forward(self,latent_z,noise=None,style_mix_steps=[]):
+    def forward(self,latent_z,noise=None,style_mix_steps=[],return_dlatents=False):
         latent_w = []
         if not isinstance(latent_z, list):
             latent_z = [latent_z]
         for z in latent_z:
             latent_w.append(self.intermediate(z))
-        if self.save_dlatents:
-            self.dlatents = latent_w
-        else:
-            self.dlatents = None
         out = self.constant.repeat(latent_z[0].size(0),1,1,1).to(next(self.parameters()).device)
         prev_rgb = None
         for i, module in enumerate(self.style_conv_blocks):
@@ -57,4 +51,7 @@ class SG2_Generator(nn.Module):
                 out, prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise)
             else:
                 return module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise)
-        return prev_rgb
+        if return_dlatents:
+            return prev_rgb, latent_w
+        else:
+            return prev_rgb
