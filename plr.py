@@ -14,16 +14,14 @@ class PathRegularization():
     def __call__(self, G, minibatch_size, pl_minibatch_shrink=2, pl_decay=0.01, pl_weight=2.0):
         
         pl_minibatch_size = minibatch_size // pl_minibatch_shrink
-        latent_z = torch.randn(pl_minibatch_size, G.dim_latent, device=self.device)
+        latent_z = torch.randn(pl_minibatch_size, G.dim_latent, device=self.device,dtype=torch.float)
         G.save_dlatents = True
         fake_image_out = G(latent_z)
         G.save_dlatents = False
-        dlatents = G.dlatents
+        dlatents = G.dlatents.clone()
         scale = torch.full((1,),fake_image_out.size()[2:].numel(),device=self.device)
         pl_noise = torch.randn_like(fake_image_out,device=self.device) / torch.sqrt(scale)
         grad, = autograd.grad(outputs=torch.sum(fake_image_out*pl_noise),inputs=dlatents,create_graph=True)
-        dlatents = None
-        del G.dlatents
         path_lengths = torch.sqrt(grad.pow(2).mean(1) + epsilon)
         pl_mean = self.pl_mean_var + pl_decay*(path_lengths.mean() - self.pl_mean_var)
         self.pl_mean_var = pl_mean.item()
