@@ -8,7 +8,7 @@ load_device = 'cpu'
 
 
 def set_device(device):
-    # it cannot modify the global variables. Maybe area prolbem.
+    
     global save_device, load_device
     save_device = device
     load_device = device
@@ -42,6 +42,14 @@ def calc_pool2d_pad(size, kernel_size, stride):
     t_pad = w_pad // 2
     b_pad = w_pad // 2 if (w_pad % 2) == 0 else w_pad // 2 + 1
     return (l_pad, r_pad, t_pad, b_pad)
+
+def load_state_dict_to_model(model, s_dict, save_device, load_device):
+    if save_device != load_device:
+        model.load_state_dict(s_dict, map_location=load_device)
+    else:
+        model.load_state_dict(s_dict)
+    if load_device == torch.device('cuda:0'):
+        model.to(load_device)
 
 
 def load_model(model_class, model_dict, path=None):

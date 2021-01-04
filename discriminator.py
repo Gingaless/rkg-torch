@@ -1,104 +1,54 @@
 
-from prog_base_model import ProgressiveBaseModel
-import torch
-from torch import nn
-from custom_layers import ResDownBlock, conv_module_bn, wn_Linear, default_conv_weight_norm, MiniBatchStdLayer, SelfAttention, PadAvgPool2d, PadMaxPool2d
+from custom_layers import EqualConv2D, ResDownBlock, image_channels, leaky_relu_alpha, EqualLinear
+from stylegan1.custom_layers import MiniBatchStdLayer
+import torch.nn as nn
 
 
-class PGSB_Discriminator(ProgressiveBaseModel):
+class SG2_Discriminator(nn.Module):
 
-    def __init__(self, start_img_size, transition_channels, insert_sa_layers=None, pooling='avg', last_fc_double=False, img_channel=3, alpha=0.2):
-
-        super().__init__(start_img_size, transition_channels)
-
-        self.from_rgb_old = conv_module_bn(start_img_size, img_channel, transition_channels[0], 1)
-        self.from_rgb_new = self.from_rgb_old
-        self.new_blocks = None
-        self.pooling = pooling
-        self.alpha = alpha
+    def __init__(self, image_size, img_channels, pooling='avg', last_fc_double=False, insert_sa_layers=[]):
+        super().__init__()
+        core = []
+        self.image_size = image_size
+        self.img_channels = img_channels
+        self.from_rgb = ResDownBlock(image_size, image_channels, img_channels[0],None,leaky_relu_alpha,False)
+        self.last_fc_double = last_fc_double
         self.insert_sa_layers = insert_sa_layers
-        self.img_channel = img_channel
-        self.alpha = alpha
-
-        self.core_blocks = nn.Sequential(MiniBatchStdLayer(), conv_module_bn(start_img_size, transition_channels[0]+1,
-        transition_channels[0], 3), default_conv_weight_norm(nn.Conv2d(transition_channels[0],transition_channels[0], start_img_size)),
-        nn.Flatten(), nn.LeakyReLU(alpha), nn.Sequential(wn_Linear(transition_channels[0], transition_channels[0]), wn_Linear(transition_channels[0], 1)) 
-        if last_fc_double else wn_Linear(transition_channels[0], 1))
-        
-        if (isinstance(insert_sa_layers, list) and insert_sa_layers[0]):
-            self.core_blocks = nn.Sequential(self.new_blocks, *self.core_blocks)
-
-    
-    def get_pool_layer(self):
-        if self.pooling=='max':
-            return PadMaxPool2d(self.current_img_size, 2, 2)
-        else:
-            return PadAvgPool2d(self.current_img_size, 2, 2)
-
-
-    def extend(self):
-
-        old_new_block = self.new_blocks
-        previous_channels = self.transition_channels[self.transition_step]
-        super().extend()
-        current_channels = self.transition_channels[self.transition_step]
-        self.from_rgb_old = nn.Sequential(self.get_pool_layer(), self.from_rgb_new)
-        self.from_rgb_new = conv_module_bn(self.current_img_size, 3, current_channels, 3, self.alpha)
-        self.new_blocks = ResDownBlock(self.current_img_size, current_channels, previous_channels, self.pooling, self.alpha)
-        
-        if self.insert_sa_layers[self.transition_step]:
-            self.new_blocks = nn.Sequential(SelfAttention(current_channels),self.new_blocks)
-        if old_new_block != None:
-            self.core_blocks = nn.Sequential(old_new_block, *self.core_blocks.children())
-            
-    def forward(self, image):
-        y = image
-        if self.transition_step == 0:
-            y = self.from_rgb_new(y)
-        else:
-            y_old = self.from_rgb_old(y)
-            y_new = self.from_rgb_new(y)
-            y_new = self.new_blocks(y_new)
-            y = self.transition_value*y_new + (1 - self.transition_value)*y_old
-        
-        y = self.core_blocks(y)
-        return y
+        self.pooling = pooling
+        input_size_buf = image_size
+        for i in range(len(img_channels)-1):
+            core.append(ResDownBlock(input_size_buf,img_channels[i],img_channels[i+1],pooling,leaky_relu_alpha,(i in insert_sa_layers)))
+            input_size_buf = input_size_buf // 2
+        core = core + [MiniBatchStdLayer(),
+        ResDownBlock(input_size_buf,img_channels[-1]+1,img_channels[-1],None,leaky_relu_alpha,(len(img_channels)-1 in insert_sa_layers)),
+        EqualConv2D(input_size_buf,img_channels[-1],img_channels[-1],input_size_buf),nn.Flatten(),nn.LeakyReLU(leaky_relu_alpha)]
+        core.append(EqualLinear((input_size_buf**2)*img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
+        if last_fc_double:
+            core.append(EqualLinear(img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
+        core.append(EqualLinear(img_channels[-1],1,activation=nn.LeakyReLU(leaky_relu_alpha)))
+        self.core = nn.ModuleList(core)
 
     def state_dict(self):
-        
-        start_image_size = self.current_img_size // (2**self.transition_step)
-        last_fc_double = isinstance(self.core_blocks, nn.Sequential)
-        dct = super().state_dict()
-        dct["arguments"] = {
-        "start_img_size" : start_image_size, 
-        "transition_channels" : self.transition_channels, 
-        "insert_sa_layers" : self.insert_sa_layers, 
-        "img_channel" : self.img_channel,
-        "pooling" : self.pooling, 
-        "last_fc_double" : last_fc_double, 
-        "alpha" : self.alpha }
-        return dct
+        sdict = {}
+        sdict['model'] = super().state_dict()
+        sdict['arguments'] = {'image_size' : self.image_size, 'img_channels' : self.img_channels,
+        'pooling' : self.pooling, 'last_fc_double' : self.last_fc_double, 'insert_sa_layers' : self.insert_sa_layers}
+        return sdict
 
+    def load_from_state_dict(sdict):
+        model = SG2_Discriminator(**sdict['arguments'])
+        model.load_state_dict(sdict['model'])
+        return model
 
-if __name__ == '__main__':
+    def forward(self,x):
+        out = self.from_rgb(x)
+        for layer in self.core:
+            out = layer(out)
+        return out
 
-    x = torch.ones(1,3,4,4)
-    d = PGSB_Discriminator(4,[512,256,128,64,32,16,8,4], 
-    [False,False,False,True,True,True,True,True], last_fc_double=True)
-    print(d)
-    print(d(x))
-    d.extend()
-    print(d)
-    x = torch.ones(1,3,8,8)
-    d.transition_value = 1.0
-    print(d(x).size())
-    #print(d.state_dict())
-    from generator import PGSB_Generator
-    import numpy as np
-    g = PGSB_Generator(4,512,4,[512,256,128,64,32,16,8,4],[False,False,False,True,False,False,False,False])
-    g.extend()
-    x = np.random.normal(0, 0.02, (1,512))
-    noise = np.random.normal(0, 0.5, (1,1))
-    x = torch.Tensor(x)
-    noise = torch.Tensor(noise)
-    print(d(g(x,noise)))
+if __name__=='__main__':
+    import stylegan1.c_dset as dset
+    dis = SG2_Discriminator(256,[4,8,16,32,32,64,128,256],insert_sa_layers=[4])
+    paimon = dset.create_image_loader_from_path('paimon/',256,1)
+    x = next(iter(paimon))[0]
+    print(dis(x))

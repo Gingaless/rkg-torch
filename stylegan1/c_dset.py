@@ -16,6 +16,8 @@ def set_plt_backend(backend):
 
 
 def load_images_from_path(root_path, image_size):
+    if isinstance(image_size, int):
+        image_size = (image_size,image_size)
     transform = transforms.Compose([
         transforms.Resize(image_size), transforms.CenterCrop(image_size), 
         transforms.RandomHorizontalFlip(), transforms.ToTensor(), 
