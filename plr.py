@@ -24,7 +24,7 @@ class PathRegularization():
         self.pl_mean_var = pl_mean.item()
         pl_penalty = (path_lengths - pl_mean).pow(2).mean().clone() * pl_weight
         
-        return pl_penalty, path_lengths, pl_mean, grad, dlatents
+        return pl_penalty
 
 
 sys.modules[__name__] = PathRegularization()

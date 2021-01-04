@@ -21,7 +21,8 @@ class SG2_Generator(nn.Module):
         for i in reversed(range(1,len(img_channels))):
             img_size_buf = img_size_buf // 2
             self.style_conv_blocks.insert(0,StyleUpSkipBlock(img_size_buf, img_channels[i-1],img_channels[i],dim_latent,upsample=True, self_attn=(i in insert_sa_layers)))
-        self.constant = nn.Parameter(torch.randn(1,img_channels[0],img_size_buf,img_size_buf))*init_weight_normal_stddev
+        constant = nn.Parameter(torch.randn(1,img_channels[0],img_size_buf,img_size_buf)*init_weight_normal_stddev)
+        self.register_parameter('constant',constant)
         self.intermediate = IntermediateG(n_fc, dim_latent)
 
     
@@ -43,7 +44,7 @@ class SG2_Generator(nn.Module):
         if not isinstance(latent_z, list):
             latent_z = [latent_z]
         for z in latent_z:
-            latent_w.append(self.intermediate(z))
+            latent_w.append(self.intermediate(z.clone()))
         out = self.constant.repeat(latent_z[0].size(0),1,1,1).to(next(self.parameters()).device)
         prev_rgb = None
         for i, module in enumerate(self.style_conv_blocks):

@@ -36,7 +36,6 @@ class __train():
         self.n_critic = 1
         self.image_path = ''
         self.lazy_reg = 0
-        self.empty_cache = 4
 
 
     def init(self, G, D, optimizer={'type':'lsgan','args_d':{'lr':0.0}, 'args_g':{'lr':0.0}}, regulate_path_length=True, lazy_reg = 16):
@@ -184,15 +183,14 @@ class __train():
                 self.__D.zero_grad()
                 real_sample = data[0].to(self.__device)
                 loss_D = loss.D(self, real_sample)
-                loss_D.backward(retain_graph=True)
+                loss_D.backward()
                 d_loss_epochs = d_loss_epochs + [loss_D.item()]
                 self.__total_D_losses = self.__total_D_losses + [loss_D.item()]
                 self.__optimD.step()
                 self.confirm_iter_D()
-                del loss_D
 
                 if self.__total_D_iter % self.n_critic == 0:
-                    reg, path_lengths, pl_mean, grad, dlatents = None, None, None, None, None
+                    reg = None
                     self.__optimG.zero_grad()
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
@@ -200,24 +198,15 @@ class __train():
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
                     if self.__reg_path_len:
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
-                            reg, path_lengths, pl_mean, grad, dlatents = plr(self.__G, self.batch_size)
+                            reg = plr(self.__G, self.batch_size)
                             print(" pl : ", reg.item())
                     if reg is None:
-                        loss_G.backward(retain_graph=True)
+                        loss_G.backward()
                     else:
-                        loss_G.backward(retain_graph=True)
-                        reg.backward(retain_graph=True)
+                        loss_G.backward()
+                        reg.backward()
                     self.confirm_iter_G()
                     self.__optimG.step()
-                    if reg is not None:
-                        for dl in dlatents:
-                            del dl
-                        del dlatents
-                        del grad
-                        del path_lengths
-                        del pl_mean
-                        del reg
-                    del loss_G
 
                 if self.__total_D_iter % eval_loss == 0 or i == (num_batchs - 1):
                     mean_loss_D = np.mean(d_loss_epochs)
@@ -227,9 +216,10 @@ class __train():
                     d_loss_epochs=[]
                     g_loss_epochs=[]
 
+                '''
                 if self.__device.type=='cuda' and self.__total_D_iter % self.empty_cache == 0:
                     torch.cuda.empty_cache()
-                del real_sample
+                '''
 
             if epoch % eval_G == 0:
                 self.eval(**eval_dict)
