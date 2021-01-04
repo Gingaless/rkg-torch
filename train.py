@@ -191,7 +191,7 @@ class __train():
                 del loss_D
 
                 if self.__total_D_iter % self.n_critic == 0:
-                    reg, pl_mean, dlatents = None, None, None
+                    reg, pl_mean, grad, dlatents = None, None, None, None
                     self.__optimG.zero_grad()
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
@@ -200,17 +200,18 @@ class __train():
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
                     if self.__reg_path_len:
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
-                            reg, pl_mean, dlatents = plr(self.__G, self.batch_size)
+                            reg, pl_mean, grad, dlatents = plr(self.__G, self.batch_size)
                             print(" pl : ", reg.item())
                     if reg is not None:
                         reg.backward(retain_graph=True)
                     self.confirm_iter_G()
                     self.__optimG.step()
                     if reg is not None:
-                        del reg
-                        del pl_mean
                         for dl in dlatents:
                             del dl
+                        del grad
+                        del pl_mean
+                        del reg
                     del loss_G
 
                 if self.__total_D_iter % eval_loss == 0 or i == (num_batchs - 1):
@@ -223,6 +224,7 @@ class __train():
 
                 if self.__device.type=='cuda':
                     torch.cuda.empty_cache()
+                del real_sample
 
             if epoch % eval_G == 0:
                 self.eval(**eval_dict)
