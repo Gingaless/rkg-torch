@@ -39,6 +39,9 @@ class SG2_Generator(nn.Module):
         model.load_state_dict(sdict['model'])
         return model
 
+    def device(self):
+        return next(self.parameters()).device
+
 
     def forward(self,latent_z,noise=None,style_mix_steps=[]):
         latent_w = []
