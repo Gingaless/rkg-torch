@@ -22,10 +22,7 @@ class PathRegularization():
         path_lengths = torch.sqrt(grad.pow(2).mean(1) + epsilon)
         pl_mean = self.pl_mean_var + pl_decay*(path_lengths.mean() - self.pl_mean_var)
         self.pl_mean_var = pl_mean.item()
-        pl_penalty = (path_lengths - pl_mean).pow(2).mean() * pl_weight
-        del pl_noise
-        del scale
-        del fake_image_out
+        pl_penalty = (path_lengths - pl_mean).pow(2).mean().clone() * pl_weight
         
         return pl_penalty, path_lengths, pl_mean, grad, dlatents
 

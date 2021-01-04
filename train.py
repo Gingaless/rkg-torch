@@ -196,14 +196,16 @@ class __train():
                     self.__optimG.zero_grad()
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
-                    loss_G.backward(retain_graph=True)
                     g_loss_epochs = g_loss_epochs + [loss_G.item()]
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
                     if self.__reg_path_len:
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
                             reg, path_lengths, pl_mean, grad, dlatents = plr(self.__G, self.batch_size)
                             print(" pl : ", reg.item())
-                    if reg is not None:
+                    if reg is None:
+                        loss_G.backward(retain_graph=True)
+                    else:
+                        loss_G.backward(retain_graph=True)
                         reg.backward(retain_graph=True)
                     self.confirm_iter_G()
                     self.__optimG.step()
