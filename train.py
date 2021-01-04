@@ -179,6 +179,7 @@ class __train():
             for i,data in tqdm(enumerate(dataloader,0),leave=False,desc=f"batches, total iter:{self.total_iter}"):
                 
                 torch.autograd.set_detect_anomaly(True)
+                self.__optimD.zero_grad()
                 self.__D.zero_grad()
                 real_sample = data[0].to(self.__device)
                 loss_D = loss.D(self, real_sample)
@@ -191,6 +192,7 @@ class __train():
                 loss_G = None
 
                 if self.__total_D_iter % self.n_critic == 0:
+                    self.__optimG.zero_grad()
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
                     loss_G.backward(retain_graph=True)
@@ -198,7 +200,7 @@ class __train():
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
                     if self.__reg_path_len:
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
-                            reg, _ = plr(self.__G, self.batch_size)
+                            reg = plr(self.__G, self.batch_size)
                             loss_G = loss_G + reg
                             print(" pl : ", reg.item())
                     self.confirm_iter_G()
