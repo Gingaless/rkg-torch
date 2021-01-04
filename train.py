@@ -188,6 +188,7 @@ class __train():
                 self.__total_D_losses = self.__total_D_losses + [loss_D.item()]
                 self.__optimD.step()
                 self.confirm_iter_D()
+                del loss_D
 
                 loss_G = None
 
@@ -201,11 +202,12 @@ class __train():
                     if self.__reg_path_len:
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
                             reg = plr(self.__G, self.batch_size)
-                            loss_G = loss_G + reg
+                            reg.backward(retain_graph=True)
                             print(" pl : ", reg.item())
+                            del reg
                     self.confirm_iter_G()
-                    loss_G.backward(retain_graph=True)
                     self.__optimG.step()
+                    del loss_G
 
                 if self.__total_D_iter % eval_loss == 0 or i == (num_batchs - 1):
                     mean_loss_D = np.mean(d_loss_epochs)
@@ -214,6 +216,9 @@ class __train():
                     print('mean loss of G : ', mean_loss_G)
                     d_loss_epochs=[]
                     g_loss_epochs=[]
+
+                if self.__device.type=='cuda':
+                    torch.cuda.empty_cache()
 
             if epoch % eval_G == 0:
                 self.eval(**eval_dict)
@@ -232,5 +237,5 @@ if __name__=='__main__':
     tr.init(G,D,{'type':'lsgan','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 2
-    tr.lazy_reg = 8
+    tr.lazy_reg = 4
     tr(1,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2)})
