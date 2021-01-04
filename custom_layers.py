@@ -113,7 +113,9 @@ class StyleConv2D(nn.Module):
 class StyleUpSkipBlock(nn.Module):
     def __init__(self, input_size, in_channels, out_channels, style_dim, upsample=True,self_attn=False):
         super().__init__()
-        self.b1, self.b2, self.b3 = nn.Parameter(torch.zeros(3,1))
+        self.register_parameter('b1',nn.Parameter(torch.zeros(1)))
+        self.register_parameter('b2',nn.Parameter(torch.zeros(1)))
+        self.register_parameter('b3',nn.Parameter(torch.zeros(1)))
         self.input_size = input_size
         self.output_size = input_size*2 if upsample else input_size
         self.in_channels = in_channels
@@ -129,10 +131,12 @@ class StyleUpSkipBlock(nn.Module):
         self.to_rgb = toRGB(self.output_size, out_channels, 3)
         self.self_attn = stg1cl.SelfAttention(out_channels) if self_attn else None
 
+    '''
     def _apply(self, fn):
         super(StyleUpSkipBlock, self)._apply(fn)
         self.b1, self.b2, self.b3 = fn(self.b1), fn(self.b2), fn(self.b3)
         return self
+    '''
 
     def unit_operation(self, conv_layer, bias, noise_layer, activation, input_feature_map, style, prev_rgb, noise):
         out_ft_map = conv_layer(input_feature_map, style)
