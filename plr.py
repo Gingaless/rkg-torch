@@ -23,6 +23,8 @@ class PathRegularization():
         pl_mean = self.pl_mean_var + pl_decay*(path_lengths.mean() - self.pl_mean_var)
         self.pl_mean_var = pl_mean.item()
         pl_penalty = (path_lengths - pl_mean).pow(2).mean() * pl_weight
+        del pl_noise
+        del scale
         
         return pl_penalty, pl_mean, grad, dlatents
 

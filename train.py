@@ -36,6 +36,7 @@ class __train():
         self.n_critic = 1
         self.image_path = ''
         self.lazy_reg = 0
+        self.empty_cache = 4
 
 
     def init(self, G, D, optimizer={'type':'lsgan','args_d':{'lr':0.0}, 'args_g':{'lr':0.0}}, regulate_path_length=True, lazy_reg = 16):
@@ -209,6 +210,7 @@ class __train():
                     if reg is not None:
                         for dl in dlatents:
                             del dl
+                        del dlatents
                         del grad
                         del pl_mean
                         del reg
@@ -222,7 +224,7 @@ class __train():
                     d_loss_epochs=[]
                     g_loss_epochs=[]
 
-                if self.__device.type=='cuda':
+                if self.__device.type=='cuda' and self.__total_D_iter % self.empty_cache == 0:
                     torch.cuda.empty_cache()
                 del real_sample
 
