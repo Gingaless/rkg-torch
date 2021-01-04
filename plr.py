@@ -9,11 +9,12 @@ class PathRegularization():
 
     def __init__(self):
         self.pl_mean_var = 0.0
+        self.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
         
     def __call__(self, G, minibatch_size, pl_minibatch_shrink=2, pl_decay=0.01, pl_weight=2.0):
         
         pl_minibatch_size = minibatch_size // pl_minibatch_shrink
-        latent_z = torch.randn(pl_minibatch_size, G.dim_latent, device=torch.device(G))
+        latent_z = torch.randn(pl_minibatch_size, G.dim_latent, device=self.device)
         G.save_dlatents = True
         fake_image_out = G(latent_z)
         G.save_dlatents = False

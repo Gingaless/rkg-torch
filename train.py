@@ -91,7 +91,8 @@ class __train():
             self.__device = utils.set_device(device)
             self.__G.to(self.__device)
             self.__D.to(self.__device)
-            
+            plr.device = self.__device
+
 
     @property
     def total_iter(self):
