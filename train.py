@@ -206,8 +206,10 @@ class __train():
                         reg.backward(retain_graph=True)
                     self.confirm_iter_G()
                     self.__optimG.step()
-                    del reg
-                    del dlatents
+                    if reg is not None:
+                        del reg
+                        for dl in dlatents:
+                            del dlatents
                     del loss_G
 
                 if self.__total_D_iter % eval_loss == 0 or i == (num_batchs - 1):
