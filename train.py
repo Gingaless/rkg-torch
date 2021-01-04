@@ -178,8 +178,6 @@ class __train():
         for epoch in tqdm(range(epochs), desc='epochs', postfix=f'total epochs : {self.total_epochs}'):
             for i,data in tqdm(enumerate(dataloader,0),leave=False,desc=f"batches, total iter:{self.total_iter}"):
                 
-                if self.__device.type=='cuda':
-                    torch.cuda.empty_cache()
                 torch.autograd.set_detect_anomaly(True)
                 self.__D.zero_grad()
                 real_sample = data[0].to(self.__device)
@@ -195,23 +193,15 @@ class __train():
                 if self.__total_D_iter % self.n_critic == 0:
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
+                    loss_G.backward(retain_graph=True)
                     g_loss_epochs = g_loss_epochs + [loss_G.item()]
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
-                    self.confirm_iter_G()
-                if self.__reg_path_len:
-                    if loss_G is None:
-                        self.__G.zero_grad()
-                    if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0) or (self.lazy_reg < 1):
-                        reg, _ = plr(self.__G, self.batch_size)
-                        print("pl : ",reg.item())
-                        '''
-                        if loss_G is None:
-                            loss_G = reg
-                        else:
+                    if self.__reg_path_len:
+                        if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
+                            reg, _ = plr(self.__G, self.batch_size)
                             loss_G = loss_G + reg
-                        '''
-                        reg.backward(retain_graph=True)
-                if loss_G is not None:
+                            print(" pl : ", reg.item())
+                    self.confirm_iter_G()
                     loss_G.backward(retain_graph=True)
                     self.__optimG.step()
 
