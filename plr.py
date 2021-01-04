@@ -25,8 +25,9 @@ class PathRegularization():
         pl_penalty = (path_lengths - pl_mean).pow(2).mean() * pl_weight
         del pl_noise
         del scale
+        del fake_image_out
         
-        return pl_penalty, pl_mean, grad, dlatents
+        return pl_penalty, path_lengths, pl_mean, grad, dlatents
 
 
 sys.modules[__name__] = PathRegularization()
