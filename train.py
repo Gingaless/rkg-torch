@@ -178,6 +178,8 @@ class __train():
         for epoch in tqdm(range(epochs), desc='epochs', postfix=f'total epochs : {self.total_epochs}'):
             for i,data in tqdm(enumerate(dataloader,0),leave=False,desc=f"batches, total iter:{self.total_iter}"):
                 
+                if self.__device.type=='cuda':
+                    torch.cuda.empty_cache()
                 torch.autograd.set_detect_anomaly(True)
                 self.__D.zero_grad()
                 real_sample = data[0].to(self.__device)

@@ -21,9 +21,10 @@ class PathRegularization():
         dlatents = G.dlatents
         pl_noise = torch.randn_like(fake_image_out,device=self.device) / torch.sqrt(torch.empty(1,device=self.device).fill_(fake_image_out.size()[2:].numel()))
         grad, = autograd.grad(outputs=torch.sum(fake_image_out*pl_noise),inputs=dlatents,create_graph=True,retain_graph=True)
+        dlatents = None
         path_lengths = torch.sqrt(grad.pow(2).mean(1) + epsilon)
         pl_mean = self.pl_mean_var + pl_decay*(path_lengths.mean() - self.pl_mean_var)
-        self.pl_mean_var = pl_mean.detach()
+        self.pl_mean_var = pl_mean.item()
         pl_penalty = (path_lengths - pl_mean).pow(2).mean() * pl_weight
         
         return pl_penalty, pl_mean.detach()
