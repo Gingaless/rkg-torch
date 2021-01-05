@@ -125,8 +125,10 @@ class __train():
             self.__optimG = optim.Adam(self.__G.parameters(), **optimizer['args_g'])
             self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
             self.__lossG, self.__lossD = nn.MSELoss(), nn.MSELoss()
-        
-
+        if optimizer['type']=='logistic_loss':
+            self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
+            self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
+            self.__lossG, self.__lossD = 'logistic_G', 'logistic_D'
     
     def make_latent_z(self, batch_size, n_latents, clip_value=None, style_mix_step=[]):
         out1 = [torch.randn(batch_size, n_latents, device=self.__device)] if style_mix_step==[] else [torch.randn(batch_size, n_latents, device=self.__device) for _ in range(2)]
@@ -197,7 +199,7 @@ class __train():
                     g_loss_epochs = g_loss_epochs + [loss_G.item()]
                     self.__total_G_losses = self.__total_G_losses + [loss_G.item()]
                     if self.__reg_path_len:
-                        if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
+                        if (self.lazy_reg > 0 and self.__total_G_iter % self.lazy_reg == 0):
                             reg = plr(self.__G, self.batch_size)
                             print(" pl : ", reg.item())
                     if reg is not None:
@@ -233,7 +235,7 @@ if __name__=='__main__':
     G = SG2_Generator(512,img_channels,512,6)
     img_channels.reverse()
     D = SG2_Discriminator(512,img_channels)
-    tr.init(G,D,{'type':'lsgan','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
+    tr.init(G,D,{'type':'logistic_loss','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 2
     tr.lazy_reg = 4

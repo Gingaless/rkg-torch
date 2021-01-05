@@ -1,6 +1,9 @@
 
 import sys
 import torch
+from torch.nn import functional as F
+
+
 
 
 class __loss():
@@ -11,10 +14,14 @@ class __loss():
     def D(self, train, real_sample):
         if train.optimizer['optimizer type']=='lsgan':
             return self.lsgan_D(train, real_sample)
+        if train.optimizer['optimizer type']=='logistic_loss':
+            return self.logistic_D(train, real_sample)
 
     def G(self, train):
         if train.optimizer['optimizer type']=='lsgan':
             return self.lsgan_G(train)
+        if train.optimizer['optimizer type']=='logistic_loss':
+            return self.logistic_G(train)
 
     def lsgan_D(self, train, real_sample):
 
@@ -42,6 +49,25 @@ class __loss():
         loss_G = train.loss['loss criterion of G'](output, labels)
 
         return loss_G
+
+    def logistic_D(self, train, real_sample):
+
+        batch_size = real_sample.size(0)
+        fakes = train.out_G(batch_size).detach()
+        out_real = train.out_D(real_sample).view(-1)
+        out_fake = train.out_D(fakes).view(-1)
+        loss_real = F.softplus(out_real)
+        loss_fake = F.softplus(-out_fake)
+        
+        return loss_real.mean() + loss_fake.mean()
+
+    def logistic_G(self, train):
+
+        fakes = train.out_G(train.batch_size)
+        output = train.out_D(fakes).view(-1)
+        loss_G = F.softplus(-output)
+
+        return loss_G.mean()
 
 
 
