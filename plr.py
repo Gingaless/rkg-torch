@@ -18,11 +18,11 @@ class PathRegularization():
         fake_image_out, dlatents = G(latent_z,return_dlatents=True)
         scale = torch.full((1,),fake_image_out.size()[2:].numel(),device=self.device,dtype=torch.float)
         pl_noise = torch.randn_like(fake_image_out,device=self.device) / torch.sqrt(scale)
-        grad, = autograd.grad(outputs=torch.sum(fake_image_out*pl_noise),inputs=dlatents,create_graph=True)
+        grad, = autograd.grad(outputs=torch.sum(fake_image_out*pl_noise),inputs=dlatents)
         path_lengths = torch.sqrt(grad.pow(2).mean(1) + epsilon)
         pl_mean = self.pl_mean_var + pl_decay*(path_lengths.mean() - self.pl_mean_var)
         self.pl_mean_var = pl_mean.item()
-        pl_penalty = (path_lengths - pl_mean).pow(2).mean().clone() * pl_weight
+        pl_penalty = (path_lengths - pl_mean).pow(2).mean() * pl_weight
         
         return pl_penalty
 

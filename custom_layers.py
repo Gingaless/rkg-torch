@@ -149,7 +149,7 @@ class StyleUpSkipBlock(nn.Module):
         return out_ft_map
 
     def forward(self, input_feature_map, style, prev_rgb=None, noise=None):
-        out_ft_map = self.unit_operation(self.conv1, self.b1, self.noise1, self.activation1, input_feature_map, style, prev_rgb, noise) # output feature map
+        out_ft_map = self.unit_operation(self.conv1, self.b1, self.noise1, self.activation1, input_feature_map.clone(), style, prev_rgb, noise) # output feature map
         out_ft_map = self.unit_operation(self.conv2, self.b2, self.noise2, self.activation2, out_ft_map, style, prev_rgb, noise)
         out_ft_map = self.unit_operation(self.conv3, self.b3, self.noise3, self.activation3, out_ft_map, style, prev_rgb, noise)
         if self.self_attn is not None:
@@ -159,7 +159,7 @@ class StyleUpSkipBlock(nn.Module):
             if self.upsample_prev is not None:
                 prev_rgb = self.upsample_prev(prev_rgb)
             out_rgb = out_rgb + prev_rgb
-        return out_ft_map, out_rgb if out_ft_map.size(1) > image_channels else out_rgb
+        return out_ft_map, out_rgb.clone() if out_ft_map.size(1) > image_channels else out_rgb
 
 class ResDownBlock(stg1cl.ResDownBlock):
     def __init__(self, input_size, in_channel, out_channel, pooling='avg', alpha=0.2, self_attn=False):

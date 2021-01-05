@@ -200,11 +200,9 @@ class __train():
                         if (self.lazy_reg > 0 and self.__total_D_iter % self.lazy_reg == 0):
                             reg = plr(self.__G, self.batch_size)
                             print(" pl : ", reg.item())
-                    if reg is None:
-                        loss_G.backward()
-                    else:
-                        loss_G.backward()
-                        reg.backward()
+                    if reg is not None:
+                        loss_G = loss_G.clone() + reg
+                    loss_G.backward()
                     self.confirm_iter_G()
                     self.__optimG.step()
 
