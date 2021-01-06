@@ -24,7 +24,7 @@ class Blur(nn.Module):
         ]])
         #self.register_buffer('blur_kernel', self.blur_kernel)
     def forward(self, x):
-        return filter2D(x, self.blur_kernel, normalized=True)
+        return filter2D(x, self.blur_kernel)
 
 
 class EqualConv2D(nn.Module):
@@ -140,8 +140,10 @@ class StyleUpSkipBlock(nn.Module):
 
     def unit_operation(self, conv_layer, bias, noise_layer, activation, input_feature_map, style, prev_rgb, noise):
         out_ft_map = conv_layer(input_feature_map, style)
+        
         if conv_layer.upsample is not None:
-            out_ft_map = self.blur(out_ft_map)
+           out_ft_map = self.blur(out_ft_map)
+        
         out_ft_map = out_ft_map + bias
         if noise is not None:
             out_ft_map = out_ft_map + noise_layer(noise)

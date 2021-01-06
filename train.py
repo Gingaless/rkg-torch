@@ -129,6 +129,10 @@ class __train():
             self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
             self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
             self.__lossG, self.__lossD = 'logistic_G', 'logistic_D'
+        if optimizer['type']=='logistic_loss_ns':
+            self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
+            self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
+            self.__lossG, self.__lossD = 'logistic_G', 'logistic_D_ns'
     
     def make_latent_z(self, batch_size, n_latents, clip_value=None, style_mix_step=[]):
         out1 = [torch.randn(batch_size, n_latents, device=self.__device)] if style_mix_step==[] else [torch.randn(batch_size, n_latents, device=self.__device) for _ in range(2)]
@@ -230,13 +234,18 @@ sys.modules[__name__] = __train()
 
 if __name__=='__main__':
     tr = __train()
+    tr.image_size = 64
     
-    img_channels=[512,256,128,64,32,32,16,8]
-    G = SG2_Generator(512,img_channels,512,6)
+    img_channels=[256,128,64,32,16]
+    print(img_channels)
+    G = SG2_Generator(64,img_channels,512,6)
     img_channels.reverse()
-    D = SG2_Discriminator(512,img_channels)
-    tr.init(G,D,{'type':'logistic_loss','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
+    D = SG2_Discriminator(64,img_channels)
+    print(img_channels)
+    tr.init(G,D,{'type':'logistic_loss','args_d':{'lr':2e-2},'args_g':{'lr':2e-2}})
     tr.image_path = '/home/shy/kiana_resized/'
+    tr.image_path = 'pds/'
     tr.batch_size = 2
     tr.lazy_reg = 4
-    tr(1,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2)})
+    print(tr.optimizer)
+    tr(10,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2),'max_size':128})

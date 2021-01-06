@@ -16,11 +16,13 @@ class __loss():
             return self.lsgan_D(train, real_sample)
         if train.optimizer['optimizer type']=='logistic_loss':
             return self.logistic_D(train, real_sample)
+        if train.optimizer['optimizer type']=='logistic_loss_ns':
+            return self.logistic_D_ns(train, real_sample)
 
     def G(self, train):
         if train.optimizer['optimizer type']=='lsgan':
             return self.lsgan_G(train)
-        if train.optimizer['optimizer type']=='logistic_loss':
+        if train.optimizer['optimizer type']=='logistic_loss' or train.optimizer['optimizer type']=='logistic_loss_ns':
             return self.logistic_G(train)
 
     def lsgan_D(self, train, real_sample):
@@ -57,6 +59,17 @@ class __loss():
         out_real = train.out_D(real_sample).view(-1)
         out_fake = train.out_D(fakes).view(-1)
         loss_real = F.softplus(-out_real)
+        loss_fake = F.softplus(out_fake)
+        
+        return loss_real.mean() + loss_fake.mean()
+
+    def logistic_D_ns(self, train, real_sample):
+
+        batch_size = real_sample.size(0)
+        fakes = train.out_G(batch_size).detach()
+        out_real = train.out_D(real_sample).view(-1)
+        out_fake = train.out_D(fakes).view(-1)
+        loss_real = -F.softplus(out_real)
         loss_fake = F.softplus(out_fake)
         
         return loss_real.mean() + loss_fake.mean()
