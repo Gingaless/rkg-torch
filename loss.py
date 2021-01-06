@@ -56,8 +56,8 @@ class __loss():
         fakes = train.out_G(batch_size).detach()
         out_real = train.out_D(real_sample).view(-1)
         out_fake = train.out_D(fakes).view(-1)
-        loss_real = F.softplus(out_real)
-        loss_fake = F.softplus(-out_fake)
+        loss_real = F.softplus(-out_real)
+        loss_fake = F.softplus(out_fake)
         
         return loss_real.mean() + loss_fake.mean()
 
