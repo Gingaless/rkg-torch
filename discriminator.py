@@ -41,7 +41,7 @@ class SG2_Discriminator(nn.Module):
         return model
 
     def forward(self,x):
-        out = self.from_rgb(x)
+        out = self.from_rgb(x.clone())
         for layer in self.core:
             out = layer(out)
         return out

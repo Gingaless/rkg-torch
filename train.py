@@ -129,6 +129,10 @@ class __train():
             self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
             self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
             self.__lossG, self.__lossD = 'logistic_G', 'logistic_D'
+        if optimizer['type']=='logistic_loss_r1':
+            self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
+            self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
+            self.__lossG, self.__lossD = 'logistic_G', 'logistic_D_r1'
         if optimizer['type']=='logistic_loss_ns':
             self.__optimG = optim.Adam(self.__G.parameters(),**optimizer['args_g'])
             self.__optimD = optim.Adam(self.__D.parameters(), **optimizer['args_d'])
@@ -181,11 +185,12 @@ class __train():
         num_batchs = len(dataloader)
         d_loss_epochs = []
         g_loss_epochs = []
+        #D_x, D_g1, D_g2 = [], [], []
         for epoch in tqdm(range(epochs), desc='epochs', postfix=f'total epochs : {self.total_epochs}'):
             for i,data in tqdm(enumerate(dataloader,0),leave=False,desc=f"batches, total iter:{self.total_iter}"):
                 
                 torch.autograd.set_detect_anomaly(True)
-                self.__optimD.zero_grad()
+                #self.__optimD.zero_grad()
                 self.__D.zero_grad()
                 real_sample = data[0].to(self.__device)
                 loss_D = loss.D(self, real_sample)
@@ -197,7 +202,7 @@ class __train():
 
                 if self.__total_D_iter % self.n_critic == 0:
                     reg = None
-                    self.__optimG.zero_grad()
+                    #self.__optimG.zero_grad()
                     self.__G.zero_grad()
                     loss_G = loss.G(self)
                     g_loss_epochs = g_loss_epochs + [loss_G.item()]
@@ -234,18 +239,16 @@ sys.modules[__name__] = __train()
 
 if __name__=='__main__':
     tr = __train()
-    tr.image_size = 64
+    tr.image_size = 16
     
-    img_channels=[256,128,64,32,16]
+    img_channels=[256,128,64]
     print(img_channels)
-    G = SG2_Generator(64,img_channels,512,6)
+    G = SG2_Generator(16,img_channels,256,6)
     img_channels.reverse()
-    D = SG2_Discriminator(64,img_channels)
+    D = SG2_Discriminator(16,img_channels)
     print(img_channels)
-    tr.init(G,D,{'type':'logistic_loss','args_d':{'lr':2e-2},'args_g':{'lr':2e-2}})
+    tr.init(G,D,{'type':'logistic_loss_r1','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
     tr.image_path = '/home/shy/kiana_resized/'
-    tr.image_path = 'pds/'
-    tr.batch_size = 2
+    tr.batch_size = 32
     tr.lazy_reg = 4
-    print(tr.optimizer)
     tr(10,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2),'max_size':128})

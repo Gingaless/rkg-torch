@@ -81,7 +81,7 @@ class StyleConv2D(nn.Module):
     def forward(self, x, style):
 
         batch, in_chan, h, w = x.size()
-        style = self.modulation(style).view(batch,1,in_chan,1,1)
+        style = self.modulation(style).view(batch,1,in_chan,1,1) + 1.0
         weight = self.weight.repeat(batch,1,1,1,1)
         weight = self.scale * self.weight * style
         demod = torch.rsqrt(weight.pow(2).sum([2,3,4],keepdim=True)+self.eps)
@@ -140,11 +140,11 @@ class StyleUpSkipBlock(nn.Module):
 
     def unit_operation(self, conv_layer, bias, noise_layer, activation, input_feature_map, style, prev_rgb, noise):
         out_ft_map = conv_layer(input_feature_map, style)
-        
+        '''
         if conv_layer.upsample is not None:
            out_ft_map = self.blur(out_ft_map)
-        
-        out_ft_map = out_ft_map + bias
+        '''
+        #out_ft_map = out_ft_map + bias
         if noise is not None:
             out_ft_map = out_ft_map + noise_layer(noise)
         out_ft_map = activation(out_ft_map + bias)
@@ -173,6 +173,9 @@ class ResDownBlock(stg1cl.ResDownBlock):
         self.self_attn = self_attn
         self.func = nn.Sequential(*modules)
         self.mod_id = EqualConv2D(input_size, in_channel, out_channel, 3)
+
+    def forward(self, x):
+        return super().forward(x.clone())
 
 class IntermediateG(stg1cl.IntermediateG):
     def __init__(self,n_fc, dim_latent):
