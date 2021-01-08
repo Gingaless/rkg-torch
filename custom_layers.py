@@ -70,7 +70,8 @@ class StyleConv2D(nn.Module):
         self.in_channels = in_channels
         self.input_size = input_size
         self.scale = 1 / math.sqrt(in_channels * kernel_size**2)
-        self.weight = nn.Parameter(torch.randn(1,out_channels,in_channels,kernel_size,kernel_size))
+        weight = nn.Parameter(torch.randn(1,out_channels,in_channels,kernel_size,kernel_size))
+        self.register_parameter('weight',weight)
         self.blur = Blur()
         self.modulation = EqualLinear(style_dim, in_channels)
         self.upsample = stg1cl.UpSamplingBlock() if upsample else None
@@ -84,7 +85,7 @@ class StyleConv2D(nn.Module):
         style = self.modulation(style).view(batch,1,in_chan,1,1) + 1.0
         weight = self.weight.repeat(batch,1,1,1,1)
         weight = self.scale * self.weight * style
-        demod = torch.rsqrt(weight.pow(2).sum([2,3,4],keepdim=True)+self.eps)
+        demod = torch.sqrt(weight.pow(2).sum([2,3,4],keepdim=True)+self.eps)
         weight = weight / demod
         weight = weight.view(batch*self.out_channels,self.in_channels,self.kernel_size,self.kernel_size)
         res = x
@@ -116,6 +117,7 @@ class StyleUpSkipBlock(nn.Module):
         self.register_parameter('b1',nn.Parameter(torch.zeros(1)))
         self.register_parameter('b2',nn.Parameter(torch.zeros(1)))
         self.register_parameter('b3',nn.Parameter(torch.zeros(1)))
+        self.register_parameter('prev_scale',nn.Parameter(torch.ones(1)))
         self.input_size = input_size
         self.output_size = input_size*2 if upsample else input_size
         self.in_channels = in_channels
@@ -160,7 +162,7 @@ class StyleUpSkipBlock(nn.Module):
         if prev_rgb is not None:
             if self.upsample_prev is not None:
                 prev_rgb = self.upsample_prev(prev_rgb)
-            out_rgb = out_rgb + prev_rgb
+            out_rgb = out_rgb + self.prev_scale*prev_rgb
         return out_ft_map, out_rgb.clone() if out_ft_map.size(1) > image_channels else out_rgb
 
 class ResDownBlock(stg1cl.ResDownBlock):

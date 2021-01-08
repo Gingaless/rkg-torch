@@ -239,16 +239,16 @@ sys.modules[__name__] = __train()
 
 if __name__=='__main__':
     tr = __train()
-    tr.image_size = 16
+    tr.image_size = 32
     
-    img_channels=[256,128,64]
+    img_channels=[256,128,64,32]
     print(img_channels)
-    G = SG2_Generator(16,img_channels,256,6)
+    G = SG2_Generator(32,img_channels,256,6)
     img_channels.reverse()
-    D = SG2_Discriminator(16,img_channels)
+    D = SG2_Discriminator(32,img_channels)
     print(img_channels)
-    tr.init(G,D,{'type':'logistic_loss_r1','args_d':{'lr':2e-4},'args_g':{'lr':2e-4}})
+    tr.init(G,D,{'type':'logistic_loss_r1','args_d':{'lr':1e-3},'args_g':{'lr':1e-3}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 32
-    tr.lazy_reg = 4
+    tr.lazy_reg = 8
     tr(10,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2),'max_size':128})
