@@ -21,8 +21,8 @@ class SG2_Discriminator(nn.Module):
             input_size_buf = input_size_buf // 2
         core = core + [MiniBatchStdLayer(),
         ResDownBlock(input_size_buf,img_channels[-1]+1,img_channels[-1],None,leaky_relu_alpha,(len(img_channels)-1 in insert_sa_layers)),
-        EqualConv2D(input_size_buf,img_channels[-1],img_channels[-1],input_size_buf),nn.Flatten(),nn.LeakyReLU(leaky_relu_alpha)]
-        core.append(EqualLinear((input_size_buf**2)*img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
+        nn.Conv2d(img_channels[-1],img_channels[-1],input_size_buf),nn.Flatten(),nn.LeakyReLU(leaky_relu_alpha)]
+        #core.append(EqualLinear((input_size_buf**2)*img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
         if last_fc_double:
             core.append(EqualLinear(img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
         core.append(EqualLinear(img_channels[-1],1,activation=nn.LeakyReLU(leaky_relu_alpha)))
