@@ -40,10 +40,6 @@ class EqualConv2D(nn.Module):
     def forward(self, x):
         return self._conv(x)*self.scale
 
-class toRGB(EqualConv2D):
-    def __init__(self, input_size, in_channels):
-        super().__init__(input_size, in_channels, image_channels,1)
-
 
 class EqualLinear(nn.Module):
 
@@ -74,6 +70,7 @@ class StyleConv2D(nn.Module):
         self.register_parameter('weight',weight)
         self.blur = Blur()
         self.modulation = EqualLinear(style_dim, in_channels)
+        self.demodulate = demodulate
         self.upsample = stg1cl.UpSamplingBlock() if upsample else None
         self.downsample = stg1cl.PadAvgPool2d(input_size) if downsample else None
         self.padding = calc_pool2d_pad(self.input_size,kernel_size,1)
@@ -82,11 +79,15 @@ class StyleConv2D(nn.Module):
     def forward(self, x, style):
 
         batch, in_chan, h, w = x.size()
-        style = self.modulation(style).view(batch,1,in_chan,1,1) + 1.0
+        style = self.modulation(style) + 1.0
         weight = self.weight.repeat(batch,1,1,1,1)
-        weight = weight * style
-        demod = torch.rsqrt(weight.pow(2).sum([2,3,4],keepdim=True)+self.eps)
-        weight = weight * demod
+        if self.demodulate:
+            style = style.view(batch,1,in_chan,1,1)
+            weight = weight * style
+            demod = torch.rsqrt(weight.pow(2).sum([2,3,4],keepdim=True)+self.eps)
+            weight = weight * demod
+        else:
+            x = x*style.view(batch,in_chan,1,1)
         weight = weight.view(batch*self.out_channels,self.in_channels,self.kernel_size,self.kernel_size)
         res = x
 
@@ -112,6 +113,12 @@ class StyleConv2D(nn.Module):
             res = res.view(batch,self.out_channels,h,w)
             return res
 
+class toRGB(StyleConv2D):
+
+    def __init__(self, input_size, in_channels, style_dim):
+        super().__init__(input_size, in_channels, image_channels, 1, style_dim, demodulate=False)
+
+
 class StyleUpSkipBlock(nn.Module):
     def __init__(self, input_size, in_channels, out_channels, style_dim, upsample=True,self_attn=False):
         super().__init__()
@@ -131,7 +138,7 @@ class StyleUpSkipBlock(nn.Module):
         self.conv1 = StyleConv2D(input_size, in_channels, out_channels, 3, style_dim)
         self.conv2 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim, upsample=upsample)
         self.conv3 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim)
-        self.to_rgb = toRGB(self.output_size, out_channels)
+        self.to_rgb = toRGB(self.output_size, out_channels, style_dim)
         self.self_attn = stg1cl.SelfAttention(out_channels) if self_attn else None
 
     '''
@@ -159,7 +166,7 @@ class StyleUpSkipBlock(nn.Module):
         out_ft_map = self.unit_operation(self.conv3, self.b3, self.noise3, self.activation3, out_ft_map, style, prev_rgb, noise)
         if self.self_attn is not None:
             out_ft_map = self.self_attn(out_ft_map)
-        out_rgb = self.to_rgb(out_ft_map)
+        out_rgb = self.to_rgb(out_ft_map, style)
         if prev_rgb is not None:
             if self.upsample_prev is not None:
                 prev_rgb = self.upsample_prev(prev_rgb)

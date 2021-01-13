@@ -226,8 +226,8 @@ class __train():
                     g_loss_epochs=[]
 
                 if self.__total_D_iter % eval_D == 0 or i == (num_batchs - 1):
-                    mean_D_real = np.mean(self.out_D(real_sample).detach().numpy())
-                    mean_D_fake = np.mean(self.out_D(self.out_G(real_sample.size(0)).detach()).detach().numpy())
+                    mean_D_real = np.mean(self.out_D(real_sample).detach().cpu().numpy())
+                    mean_D_fake = np.mean(self.out_D(self.out_G(real_sample.size(0)).detach()).detach().cpu().numpy())
                     print('\nmean D(x) : ', mean_D_real)
                     print('mean D(g) : ', mean_D_fake)
 
@@ -251,6 +251,7 @@ if __name__=='__main__':
     print(img_channels)
     G = SG2_Generator(32,img_channels,256,6)
     img_channels.reverse()
+    img_channels = list(np.array(img_channels)//2)
     D = SG2_Discriminator(32,img_channels)
     print(img_channels)
     tr.init(G,D,{'type':'lsgan','args_d':{'lr':1e-3},'args_g':{'lr':1e-3}})
