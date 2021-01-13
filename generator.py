@@ -1,4 +1,4 @@
-from custom_layers import IntermediateG, StyleUpSkipBlock, image_channels
+from custom_layers import IntermediateG, StyleUpSkipBlock, image_channels, EqualConv2D
 from stylegan1.custom_layers import init_weight_normal_stddev
 import torch
 import torch.nn as nn
@@ -24,6 +24,7 @@ class SG2_Generator(nn.Module):
         constant = nn.Parameter(torch.randn(1,img_channels[0],img_size_buf,img_size_buf)*init_weight_normal_stddev)
         self.register_parameter('constant',constant)
         self.intermediate = IntermediateG(n_fc, dim_latent)
+        self.initial_conv = EqualConv2D(image_size,img_channels[0],img_channels[0],3)
 
     
     def state_dict(self):
@@ -46,6 +47,7 @@ class SG2_Generator(nn.Module):
         for z in latent_z:
             latent_w.append(self.intermediate(z.clone()))
         out = self.constant.repeat(latent_z[0].size(0),1,1,1).to(next(self.parameters()).device)
+        out = self.initial_conv(out)
         prev_rgb = None
         for i, module in enumerate(self.style_conv_blocks):
             if module.out_channels > image_channels:

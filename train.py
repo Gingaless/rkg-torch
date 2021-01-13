@@ -179,7 +179,7 @@ class __train():
     def confirm_iter_G(self):
         self.__total_G_iter = self.__total_G_iter + 1
     
-    def __call__(self, epochs, eval_loss=1, eval_G=1,eval_dict={'n_fakes':16,'save_path':None,'grid_size':(4,4)}):
+    def __call__(self, epochs, eval_loss=1,eval_D=1, eval_G=1,eval_dict={'n_fakes':16,'save_path':None,'grid_size':(4,4)}):
 
         dataloader = dset.create_image_loader_from_path(self.image_path, self.image_size, self.batch_size)
         num_batchs = len(dataloader)
@@ -225,6 +225,12 @@ class __train():
                     d_loss_epochs=[]
                     g_loss_epochs=[]
 
+                if self.__total_D_iter % eval_D == 0 or i == (num_batchs - 1):
+                    mean_D_real = np.mean(self.out_D(real_sample).detach().numpy())
+                    mean_D_fake = np.mean(self.out_D(self.out_G(real_sample.size(0)).detach()).detach().numpy())
+                    print('\nmean D(x) : ', mean_D_real)
+                    print('mean D(g) : ', mean_D_fake)
+
                 '''
                 if self.__device.type=='cuda' and self.__total_D_iter % self.empty_cache == 0:
                     torch.cuda.empty_cache()
@@ -247,7 +253,7 @@ if __name__=='__main__':
     img_channels.reverse()
     D = SG2_Discriminator(32,img_channels)
     print(img_channels)
-    tr.init(G,D,{'type':'logistic_loss_r1','args_d':{'lr':1e-3},'args_g':{'lr':1e-3}})
+    tr.init(G,D,{'type':'lsgan','args_d':{'lr':1e-3},'args_g':{'lr':1e-3}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 32
     tr.lazy_reg = 8
