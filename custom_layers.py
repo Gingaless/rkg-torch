@@ -76,6 +76,7 @@ class StyleConv2D(nn.Module):
         self.downsample = stg1cl.PadAvgPool2d(input_size) if downsample else None
         self.padding = calc_pool2d_pad(self.input_size,kernel_size,1)
         self.upsamp_padding = calc_pool2d_pad(2*self.input_size,kernel_size,1)
+        nn.init.kaiming_normal_(self.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
 
     def forward(self, x, style):
 
@@ -134,10 +135,12 @@ class StyleUpSkipBlock(nn.Module):
         self.style_dim = style_dim
         self.upsample_prev = nn.Sequential(stg1cl.UpSamplingBlock()) if upsample else None
         self.blur = Blur() if upsample else None
-        self.activation1, self.activation2, self.activation3 = [nn.LeakyReLU(leaky_relu_alpha) for _ in range(3)]
+        #self.activation1, self.activation2, self.activation3 = [nn.LeakyReLU(leaky_relu_alpha) for _ in range(3)]
+        self.activation = nn.LeakyReLU(leaky_relu_alpha)
         self.noise1, self.noise2, self.noise3 = [stg1cl.Scale_B(out_channels) for _ in range(3)]
         self.conv1 = StyleConv2D(input_size, in_channels, out_channels, 3, style_dim)
-        self.conv2 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim, upsample=upsample)
+        self.conv2 = StyleConv2D(input_size, out_channels, out_channels, 3, style_dim, upsample=upsample)
+        #self.conv2 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim)
         self.conv3 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim)
         self.to_rgb = toRGB(self.output_size, out_channels, style_dim)
         self.self_attn = stg1cl.SelfAttention(out_channels) if self_attn else None
@@ -158,15 +161,19 @@ class StyleUpSkipBlock(nn.Module):
         #out_ft_map = out_ft_map + bias
         if noise is not None:
             out_ft_map = out_ft_map + noise_layer(noise)
-        out_ft_map = activation(out_ft_map + bias)
+        if activation is None:
+            out_ft_map = out_ft_map + bias
+        else:
+            out_ft_map = activation(out_ft_map + bias)
         return out_ft_map
 
     def forward(self, input_feature_map, style, prev_rgb=None, noise=None, res_log2=1.0):
-        out_ft_map = self.unit_operation(self.conv1, 0.0, self.noise1, self.activation1, input_feature_map.clone(), style, noise) # output feature map
-        out_ft_map = self.unit_operation(self.conv2, 0.0, self.noise2, self.activation2, out_ft_map, style, noise)
-        out_ft_map = self.unit_operation(self.conv3, 0.0, self.noise3, self.activation3, out_ft_map, style, noise)
+        #out_ft_map = self.unit_operation(self.conv1, 0.0, self.noise1, None, input_feature_map.clone(), style, noise) # output feature map
+        out_ft_map = self.unit_operation(self.conv1, self.b1, self.noise1, self.activation, input_feature_map.clone(), style, noise)
         if self.self_attn is not None:
             out_ft_map = self.self_attn(out_ft_map)
+        out_ft_map = self.unit_operation(self.conv2, self.b2, self.noise2, self.activation, out_ft_map, style, noise)
+        out_ft_map = self.unit_operation(self.conv3, self.b3, self.noise3, self.activation, out_ft_map, style, noise)
         out_rgb = self.to_rgb(out_ft_map, style)
         if prev_rgb is not None:
             if self.upsample_prev is not None:
@@ -174,18 +181,19 @@ class StyleUpSkipBlock(nn.Module):
             '''
             res = torch.log2(torch.Tensor(np.array([out_rgb.size(2)])))
             lod = res_log2 - res
-            lod_in = -1
-            out_rgb = out_rgb + prev_rgb
+            lod_in = 3
             '''
-            out_rgb = (1-self.t)*out_rgb + self.t*prev_rgb
+            out_rgb = out_rgb + prev_rgb
+            #out_rgb = (1-self.t)*out_rgb + self.t*prev_rgb
             #out_rgb = out_rgb + (prev_rgb - out_rgb)*torch.clamp(lod_in - lod,0.0,1.0)
         return out_ft_map, out_rgb if out_ft_map.size(1) > image_channels else out_rgb
 
 class ResDownBlock(stg1cl.ResDownBlock):
     def __init__(self, input_size, in_channel, out_channel, pooling='avg', alpha=0.2, self_attn=False):
         super().__init__(input_size, in_channel, out_channel, pooling, alpha)
-        modules = [EqualConv2D(input_size, in_channel, out_channel, 3),
-        nn.LeakyReLU(alpha), EqualConv2D(input_size, out_channel, out_channel, 3)]
+        #modules = [EqualConv2D(input_size, in_channel, out_channel, 3),
+        #nn.LeakyReLU(alpha), EqualConv2D(input_size, out_channel, out_channel, 3), nn.LeakyReLU(alpha),EqualConv2D(input_size, out_channel, out_channel, 1)]
+        modules = [stg1cl.PadConv2D(input_size, in_channel, out_channel, 3), nn.LeakyReLU(alpha), stg1cl.PadConv2D(input_size, out_channel, out_channel,3), nn.LeakyReLU(alpha)]
         if self_attn:
             modules = [stg1cl.SelfAttention(in_channel)] + modules
         self.self_attn = self_attn

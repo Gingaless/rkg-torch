@@ -253,13 +253,13 @@ if __name__=='__main__':
     
     img_channels=[256,128,64,32]
     print(img_channels)
-    G = SG2_Generator(32,img_channels,256,6)
+    G = SG2_Generator(32,img_channels,256,4)
     img_channels.reverse()
     img_channels = list(np.array(img_channels)//2)
     D = SG2_Discriminator(32,img_channels)
     print(img_channels)
-    tr.init(G,D,{'type':'lsgan','args_d':{'lr':1e-3},'args_g':{'lr':1e-3}})
+    tr.init(G,D,{'type':'lsgan','args_d':{'lr':2e-3},'args_g':{'lr':1e-3}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 32
     tr.lazy_reg = 8
-    tr(10,eval_dict={'n_fakes':4,'save_path':None,'grid_size':(2,2),'max_size':128})
+    tr(10,eval_dict={'n_fakes':16,'save_path':None,'grid_size':(4,4),'max_size':128})

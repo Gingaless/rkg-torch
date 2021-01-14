@@ -11,7 +11,7 @@ class SG2_Discriminator(nn.Module):
         core = []
         self.image_size = image_size
         self.img_channels = img_channels
-        self.from_rgb = nn.Sequential(EqualConv2D(image_size, image_channels,img_channels[0],1),nn.LeakyReLU(leaky_relu_alpha))
+        self.from_rgb = nn.Sequential(EqualConv2D(image_size, image_channels,img_channels[0],1)) #,nn.LeakyReLU(leaky_relu_alpha)
         self.last_fc_double = last_fc_double
         self.insert_sa_layers = insert_sa_layers
         self.pooling = pooling
