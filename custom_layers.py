@@ -7,6 +7,7 @@ from torch import nn
 import stylegan1.custom_layers as stg1cl
 from stylegan1.c_utils import calc_pool2d_pad
 from kornia.filters import filter2D
+import numpy as np
 
 stg1cl.default_conv_weight_norm = None
 stg1cl.default_fc_weight_norm = None
@@ -122,16 +123,16 @@ class toRGB(StyleConv2D):
 class StyleUpSkipBlock(nn.Module):
     def __init__(self, input_size, in_channels, out_channels, style_dim, upsample=True,self_attn=False):
         super().__init__()
-        self.register_parameter('b1',nn.Parameter(torch.zeros(1)))
-        self.register_parameter('b2',nn.Parameter(torch.zeros(1)))
-        self.register_parameter('b3',nn.Parameter(torch.zeros(1)))
+        self.register_parameter('b1',nn.Parameter(torch.zeros(1,out_channels,1,1)))
+        self.register_parameter('b2',nn.Parameter(torch.zeros(1,out_channels,1,1)))
+        self.register_parameter('b3',nn.Parameter(torch.zeros(1,out_channels,1,1)))
         #self.register_parameter('prev_scale',nn.Parameter(torch.ones(1)))
         self.input_size = input_size
         self.output_size = input_size*2 if upsample else input_size
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.style_dim = style_dim
-        self.upsample_prev = nn.Sequential(stg1cl.UpSamplingBlock(), Blur()) if upsample else None
+        self.upsample_prev = nn.Sequential(stg1cl.UpSamplingBlock()) if upsample else None
         self.blur = Blur() if upsample else None
         self.activation1, self.activation2, self.activation3 = [nn.LeakyReLU(leaky_relu_alpha) for _ in range(3)]
         self.noise1, self.noise2, self.noise3 = [stg1cl.Scale_B(out_channels) for _ in range(3)]
@@ -140,7 +141,7 @@ class StyleUpSkipBlock(nn.Module):
         self.conv3 = StyleConv2D(self.output_size, out_channels, out_channels, 3, style_dim)
         self.to_rgb = toRGB(self.output_size, out_channels, style_dim)
         self.self_attn = stg1cl.SelfAttention(out_channels) if self_attn else None
-
+        self.register_parameter('t',nn.Parameter(torch.zeros(1)))
     '''
     def _apply(self, fn):
         super(StyleUpSkipBlock, self)._apply(fn)
@@ -148,7 +149,7 @@ class StyleUpSkipBlock(nn.Module):
         return self
     '''
 
-    def unit_operation(self, conv_layer, bias, noise_layer, activation, input_feature_map, style, prev_rgb, noise):
+    def unit_operation(self, conv_layer, bias, noise_layer, activation, input_feature_map, style, noise):
         out_ft_map = conv_layer(input_feature_map, style)
         '''
         if conv_layer.upsample is not None:
@@ -160,17 +161,24 @@ class StyleUpSkipBlock(nn.Module):
         out_ft_map = activation(out_ft_map + bias)
         return out_ft_map
 
-    def forward(self, input_feature_map, style, prev_rgb=None, noise=None):
-        out_ft_map = self.unit_operation(self.conv1, self.b1, self.noise1, self.activation1, input_feature_map.clone(), style, prev_rgb, noise) # output feature map
-        out_ft_map = self.unit_operation(self.conv2, self.b2, self.noise2, self.activation2, out_ft_map, style, prev_rgb, noise)
-        out_ft_map = self.unit_operation(self.conv3, self.b3, self.noise3, self.activation3, out_ft_map, style, prev_rgb, noise)
+    def forward(self, input_feature_map, style, prev_rgb=None, noise=None, res_log2=1.0):
+        out_ft_map = self.unit_operation(self.conv1, 0.0, self.noise1, self.activation1, input_feature_map.clone(), style, noise) # output feature map
+        out_ft_map = self.unit_operation(self.conv2, 0.0, self.noise2, self.activation2, out_ft_map, style, noise)
+        out_ft_map = self.unit_operation(self.conv3, 0.0, self.noise3, self.activation3, out_ft_map, style, noise)
         if self.self_attn is not None:
             out_ft_map = self.self_attn(out_ft_map)
         out_rgb = self.to_rgb(out_ft_map, style)
         if prev_rgb is not None:
             if self.upsample_prev is not None:
                 prev_rgb = self.upsample_prev(prev_rgb)
+            '''
+            res = torch.log2(torch.Tensor(np.array([out_rgb.size(2)])))
+            lod = res_log2 - res
+            lod_in = -1
             out_rgb = out_rgb + prev_rgb
+            '''
+            out_rgb = (1-self.t)*out_rgb + self.t*prev_rgb
+            #out_rgb = out_rgb + (prev_rgb - out_rgb)*torch.clamp(lod_in - lod,0.0,1.0)
         return out_ft_map, out_rgb if out_ft_map.size(1) > image_channels else out_rgb
 
 class ResDownBlock(stg1cl.ResDownBlock):

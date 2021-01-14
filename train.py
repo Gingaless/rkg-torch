@@ -144,7 +144,11 @@ class __train():
         if isinstance(clip_value, tuple):
             out1 = [torch.clamp(_out1, *clip_value) for _out1 in out1]
             out2 = torch.clamp(out2, *clip_value)
-        return out1, out2, style_mix_step
+        return out1, out2, self.make_b_noise(batch_size), style_mix_step
+
+    def make_b_noise(self, batch_size):
+        b_std = 0.1
+        return torch.randn(batch_size)*b_std
 
     
     def eval(self, n_fakes, clip_value=None, style_mix_step=[], save_path=None, **show_image_kwargs):

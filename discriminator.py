@@ -11,7 +11,7 @@ class SG2_Discriminator(nn.Module):
         core = []
         self.image_size = image_size
         self.img_channels = img_channels
-        self.from_rgb = ResDownBlock(image_size, image_channels, img_channels[0],None,leaky_relu_alpha,False)
+        self.from_rgb = nn.Sequential(EqualConv2D(image_size, image_channels,img_channels[0],1),nn.LeakyReLU(leaky_relu_alpha))
         self.last_fc_double = last_fc_double
         self.insert_sa_layers = insert_sa_layers
         self.pooling = pooling
@@ -25,7 +25,7 @@ class SG2_Discriminator(nn.Module):
         #core.append(EqualLinear((input_size_buf**2)*img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
         if last_fc_double:
             core.append(EqualLinear(img_channels[-1],img_channels[-1],activation=nn.LeakyReLU(leaky_relu_alpha)))
-        core.append(EqualLinear(img_channels[-1],1,activation=nn.LeakyReLU(leaky_relu_alpha)))
+        core.append(EqualLinear(img_channels[-1],1))
         self.core = nn.ModuleList(core)
 
     def state_dict(self):

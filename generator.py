@@ -2,6 +2,7 @@ from custom_layers import IntermediateG, StyleUpSkipBlock, image_channels, Equal
 from stylegan1.custom_layers import init_weight_normal_stddev
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 class SG2_Generator(nn.Module):
@@ -42,6 +43,7 @@ class SG2_Generator(nn.Module):
 
     def forward(self,latent_z,noise=None,style_mix_steps=[],return_dlatents=False):
         latent_w = []
+        res_log2 = torch.log2(torch.Tensor(np.array([self.image_size])))
         if not isinstance(latent_z, list):
             latent_z = [latent_z]
         for z in latent_z:
@@ -51,9 +53,9 @@ class SG2_Generator(nn.Module):
         prev_rgb = None
         for i, module in enumerate(self.style_conv_blocks):
             if module.out_channels > image_channels:
-                out, prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise)
+                out, prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
             else:
-                return module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise)
+                return module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
         if return_dlatents:
             return prev_rgb, latent_w
         else:
