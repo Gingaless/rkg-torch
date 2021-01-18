@@ -25,7 +25,7 @@ class SG2_Generator(nn.Module):
         constant = nn.Parameter(torch.randn(1,img_channels[0],img_size_buf,img_size_buf)*init_weight_normal_stddev)
         self.register_parameter('constant',constant)
         self.intermediate = IntermediateG(n_fc, dim_latent)
-        self.initial_conv = EqualConv2D(image_size,img_channels[0],img_channels[0],3)
+        self.initial_conv = EqualConv2D(image_size,img_channels[0],img_channels[0],1)
 
     
     def state_dict(self):
@@ -55,7 +55,7 @@ class SG2_Generator(nn.Module):
             if module.out_channels > image_channels:
                 out, prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
             else:
-                return module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
+                prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
         if return_dlatents:
             return prev_rgb, latent_w
         else:

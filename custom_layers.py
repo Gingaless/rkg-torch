@@ -205,7 +205,7 @@ class ResDownBlock(stg1cl.ResDownBlock):
         self.mod_id = nn.Conv2d(in_channel, out_channel, 1)
 
     def forward(self, x):
-        return super().forward(x)
+        return super().forward(x)*torch.rsqrt(torch.Tensor([2.0]))
 
 class NormalizeW(nn.Module):
     def __init__(self):
@@ -221,3 +221,42 @@ class IntermediateG(stg1cl.IntermediateG):
             layers.append(EqualLinear(dim_latent,dim_latent))
             layers.append(nn.LeakyReLU(leaky_relu_alpha))
         self.mapping = nn.Sequential(*layers)
+
+
+if __name__=='__main__':
+    
+    import stylegan1.c_dset as dset
+    
+    img_path = 'p/'
+    sty = torch.randn(4,32)
+    styupskip1 = StyleUpSkipBlock(128,3,16,32)
+    styupskip2 = StyleUpSkipBlock(256,16,8,32,upsample=False)
+    act = nn.LeakyReLU(0.2)
+    to_rgb = toRGB(256,8,32)
+    img_tensor = next(iter(dset.create_image_loader_from_path(img_path, 128, 4)))[0]
+    obj_tensor = F.interpolate(img_tensor,scale_factor=2.0)
+    params = list(styupskip1.parameters()) + list(styupskip2.parameters()) + list(to_rgb.parameters())
+    opt = torch.optim.Adam(params,lr=0.01)
+    for param in styupskip1.parameters():
+        print(param.name, ':', param.size())
+    #exit()
+    dset.show_images_from_tensors(obj_tensor,(2,2))
+    t_epochs = 100
+    show_loss = 10
+    for epoch in range(t_epochs):
+        styupskip1.zero_grad()
+        styupskip2.zero_grad()
+        to_rgb.zero_grad()
+        prev_rgb = None
+        res,prev_rgb = styupskip1(img_tensor,sty)
+        res = act(res)
+        res,prev_rgb = styupskip2(res,sty,prev_rgb=prev_rgb)
+        res = act(res)
+        res = to_rgb(res,sty) + prev_rgb
+        ls_loss = torch.mean((res-obj_tensor).pow(2))
+        ls_loss.backward()
+        opt.step()
+        if epoch % show_loss == 0 or epoch==t_epochs-1:
+            dset.show_images_from_tensors(res.detach(),(2,2))
+            print(ls_loss.item())
+        

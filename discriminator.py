@@ -48,7 +48,26 @@ class SG2_Discriminator(nn.Module):
 
 if __name__=='__main__':
     import stylegan1.c_dset as dset
-    dis = SG2_Discriminator(256,[4,8,16,32,32,64,128,256],insert_sa_layers=[4])
-    paimon = dset.create_image_loader_from_path('paimon/',256,1)
-    x = next(iter(paimon))[0]
-    print(dis(x))
+    import torch
+    from torch import optim
+    dis = SG2_Discriminator(256,[4,8,16,32,64,128,256],insert_sa_layers=[4])
+    opt = optim.Adam(dis.parameters(),lr=0.001)
+    paimon = dset.create_image_loader_from_path('p/',256,4)
+    epochs = 100
+    show_loss = 10
+    for epoch in range(epochs):
+        torch.autograd.set_detect_anomaly(True)
+        dis.zero_grad()
+        real_sample = next(iter(paimon))[0]
+        real_sample.requires_grad_()
+        res = dis(real_sample)
+        loss = torch.mean(torch.sub(res, 1.0).pow(2))
+        loss.clone().backward()
+        '''
+        grad, = torch.autograd.grad(outputs=loss,inputs=real_sample)
+        grads = grad.clone().sum()
+        grads.backward()
+        '''
+        opt.step()
+        if epoch % show_loss == 0 or epoch == epochs-1:
+            print(loss)
