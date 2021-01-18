@@ -56,6 +56,7 @@ class SG2_Generator(nn.Module):
                 out, prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
             else:
                 prev_rgb = module(out,latent_w[1] if i in style_mix_steps else latent_w[0],prev_rgb,noise,res_log2)
+                break
         if return_dlatents:
             return prev_rgb, latent_w
         else:
