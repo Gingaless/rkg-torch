@@ -205,7 +205,7 @@ class ResDownBlock(stg1cl.ResDownBlock):
         self.mod_id = nn.Conv2d(in_channel, out_channel, 1)
 
     def forward(self, x):
-        return super().forward(x)*torch.rsqrt(torch.Tensor([2.0]))
+        return super().forward(x)*torch.rsqrt(torch.Tensor([2.0]).to(x.device))
 
 class NormalizeW(nn.Module):
     def __init__(self):
