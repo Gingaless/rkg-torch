@@ -323,7 +323,7 @@ class MiniBatchStdLayer(nn.Module):
             y = x.view(-1, subGroupSize, *size[1:]) # G x subGroupSize x C x H x W
             stddev = torch.sqrt(torch.var(y, dim=1)+10e-8) # G x C x H x W
             std_mean = torch.mean(stddev, [1,2,3], keepdim=True) # G x 1 x 1 x 1
-            std_mean = std_mean.repeat(subGroupSize, 1, *size[2:]) # G x 1 x H x W
+            std_mean = std_mean.repeat(subGroupSize, 1, *size[2:]) # B x 1 x H x W
         else:
             std_mean = torch.zeros(size[0], 1, *size[2:], device=x.device)
 

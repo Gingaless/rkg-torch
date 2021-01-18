@@ -38,6 +38,8 @@ class EqualConv2D(nn.Module):
 
         self.stride = self._conv.stride
 
+        nn.init.kaiming_normal_(self._conv.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
+
     def forward(self, x):
         return self._conv(x)*self.scale
 
@@ -51,6 +53,8 @@ class EqualLinear(nn.Module):
         self.scale = (1 / math.sqrt(in_dim)) * lr_mul
         self.lr_mul = lr_mul
         self.activation = activation
+        nn.init.kaiming_normal_(self._linear.weight, a=0, mode='fan_in', nonlinearity='leaky_relu')
+        nn.init.zeros_(self._linear.bias)
 
     def forward(self, x):
         out = self._linear(x)
@@ -203,10 +207,16 @@ class ResDownBlock(stg1cl.ResDownBlock):
     def forward(self, x):
         return super().forward(x)
 
+class NormalizeW(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self,x):
+        return F.normalize(x,dim=1)
+
 class IntermediateG(stg1cl.IntermediateG):
     def __init__(self,n_fc, dim_latent):
         super().__init__(n_fc,dim_latent,leaky_relu_alpha)
-        layers=[stg1cl.PixelNorm()]
+        layers=[NormalizeW()]
         for _ in range(n_fc):
             layers.append(EqualLinear(dim_latent,dim_latent))
             layers.append(nn.LeakyReLU(leaky_relu_alpha))

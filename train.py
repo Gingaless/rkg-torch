@@ -258,7 +258,7 @@ if __name__=='__main__':
     img_channels = list(np.array(img_channels)//2)
     D = SG2_Discriminator(32,img_channels)
     print(img_channels)
-    tr.init(G,D,{'type':'lsgan','args_d':{'lr':2e-3},'args_g':{'lr':1e-3}})
+    tr.init(G,D,{'type':'lsgan','args_d':{'lr':5e-4},'args_g':{'lr':5e-4}})
     tr.image_path = '/home/shy/kiana_resized/'
     tr.batch_size = 32
     tr.lazy_reg = 8
