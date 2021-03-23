@@ -137,7 +137,7 @@ class StyleUpSkipBlock(nn.Module):
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.style_dim = style_dim
-        self.upsample_prev = nn.Sequential(stg1cl.UpSamplingBlock()) if upsample else None
+        self.upsample_prev = nn.Sequential(stg1cl.UpSamplingBlock(),Blur()) if upsample else None
         self.blur = Blur() if upsample else None
         #self.activation1, self.activation2, self.activation3 = [nn.LeakyReLU(leaky_relu_alpha) for _ in range(3)]
         self.activation = nn.LeakyReLU(leaky_relu_alpha)

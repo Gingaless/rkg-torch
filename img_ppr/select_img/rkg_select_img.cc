@@ -100,6 +100,9 @@ std::string RKG_SELECT_IMG::generate_dest_path_str(const char* dest_file_name, i
     destdir = opendir(destPATH.c_str());
     if (destdir == NULL)
         std::cout << "destdir does not exist." << std::endl;
+    else
+        closedir(destdir);
+    
     dest_dir = dest_dir / size_dir;
     boost::filesystem::path dest_file(dest_file_name);
     if ((mkdir(dest_dir.c_str(), 0777)) == -1) //(mkdir(dest_dir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1)
